@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>月間カレンダー（安全性強化版）</title>
+<style>
+:root{--bg:#fff;--fg:#1f2933;--mut:#6b7785;--line:#d8dee6;--card:#f5f7fa;--acc:#2f7d5b;--accbg:#e3f3ea;--sun:#c0392b;--sat:#2563b0;--today:#fff3c4;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15191e;--fg:#e8ecf0;--mut:#9aa6b2;--line:#2e3640;--card:#1e242b;--acc:#5fc79a;--accbg:#1f3a2e;--sun:#ff8a7a;--sat:#7fb2ff;--today:#4a4020}}
+:root[data-theme="dark"]{--bg:#15191e;--fg:#e8ecf0;--mut:#9aa6b2;--line:#2e3640;--card:#1e242b;--acc:#5fc79a;--accbg:#1f3a2e;--sun:#ff8a7a;--sat:#7fb2ff;--today:#4a4020}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--fg);font-family:"Hiragino Sans","Yu Gothic",Meiryo,sans-serif;padding:8px;max-width:1000px;margin:0 auto;display:flex;flex-direction:column}
+button,.btn,select,input,textarea{font:inherit;color:var(--fg)}
+button,.btn{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 11px;font-size:14px;cursor:pointer}
+.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
+.dng{color:var(--sun);border-color:var(--sun)}
+nav{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+#title{font-size:19px;font-weight:700;flex:1;text-align:center}
+#menu{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:10px;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px}
+#menu select{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px}
+#msg{flex-basis:100%;color:var(--mut)}
+.grid{display:grid;flex:1;min-height:0;grid-template-columns:repeat(7,minmax(0,1fr));border-top:1px solid var(--line);border-left:1px solid var(--line)}
+.dow,.cell{border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.dow{background:var(--card);text-align:center;font-size:12px;padding:3px;font-weight:600}
+.cell{min-height:0;padding:3px;font-size:12px;overflow:hidden;cursor:pointer}
+
+.cell.out{background:var(--card);opacity:.55}
+.cell.today{background:var(--today)}
+.num{font-size:13px;font-weight:600}
+.ev{display:block;width:100%;text-align:left;margin-top:2px;padding:2px 4px;border:0;border-left:3px solid var(--c,var(--acc));background:color-mix(in srgb,var(--c,var(--acc)) 22%,var(--bg));border-radius:3px;font-size:12px;line-height:1.3;white-space:normal;word-break:break-all}
+.ev small{color:var(--mut);display:block}
+.grid.simple .ev{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:1px 4px}
+.sun{color:var(--sun)}.sat{color:var(--sat)}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-start;justify-content:center;padding:calc(env(safe-area-inset-top,0px) + 10px) 10px 10px;overflow:auto;z-index:20}
+.box{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:14px;width:100%;max-width:440px}
+.box h2{margin:0 0 8px;font-size:16px}
+.box label{display:block;font-size:13px;color:var(--mut);margin-top:8px}
+.box input[type=text],.box input[type=date],.box input[type=time],.box textarea{display:block;width:100%;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:7px;margin-top:2px}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.box .chk{display:flex;gap:6px;align-items:center;color:var(--fg)}
+.acts{display:flex;gap:8px;margin-top:14px;justify-content:flex-end}
+#err{color:var(--sun);font-size:13px;margin-top:6px;min-height:1em}
+.sw{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}.sw button{width:32px;height:32px;border-radius:50%;padding:0;border:2px solid transparent;background:var(--c)}.sw button.on{border-color:var(--fg);box-shadow:0 0 0 3px var(--bg) inset}
+.hist{display:flex;gap:6px;overflow-x:auto;margin-top:4px;padding-bottom:4px}.hist button{white-space:nowrap;font-size:12px;padding:4px 8px;border-left:4px solid var(--c,var(--acc))}
+@media (max-width:640px){.dow{font-size:11px;padding:2px}.grid .cell,.grid.simple .cell{min-height:0;padding:1px}.num{font-size:12px}.ev,.grid.simple .ev{font-size:10px;line-height:1.2;padding:1px 2px;border-left-width:2px;white-space:normal;word-break:break-all;overflow:visible;text-overflow:clip}.ev .en{display:none}#title{font-size:17px}nav button{padding:6px 8px;font-size:13px}}
+@media print{nav,#menu,#modal{display:none!important}body{padding:0}}
+</style>
+</head>
+<body>
+<nav>
+  <button id="prev">◀</button>
+  <div id="title"></div>
+  <button id="today">今月</button>
+  <button id="next">▶</button>
+  <button id="mbtn" title="メニュー">☰</button>
+</nav>
+<div id="menu" hidden>
+  <label class="btn pri">ICS読込<input id="file" type="file" accept=".ics,text/calendar" multiple hidden></label>
+  <label><input type="checkbox" id="append"> 追加読込</label>
+  <label>表示：<select id="mode"><option value="detail" selected>詳細</option><option value="simple">簡易</option></select></label>
+  <label id="lenwrap">文字数：<select id="len"><option>4</option><option>6</option><option selected>8</option><option>10</option><option>12</option></select></label>
+  <button id="exp">ICS書き出し</button>
+  <button id="print">印刷</button>
+  <button id="clear" class="dng">全消去</button>
+  <div id="msg">日付のマスをタップで予定追加、予定をタップで編集できます。変更はこの端末のブラウザに自動保存されます。</div>
+</div>
+<div class="grid" id="grid"></div>
+
+<div id="modal" hidden><div class="box" id="box"></div></div>
+
+<script>
+const SAMPLE = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+SUMMARY:懐かしの名画劇場
+DTSTART:20261205T083000
+DTEND:20261205T174500
+LOCATION:市総合福祉センター(若草町8-2)
+DESCRIPTION:【いきいきチャレンジ対象事業】\\n担当:市社会福祉協議会 施設管理課(089-921-2111)\\n※映画をご覧になるには作品ごとの鑑賞券が必要です(有料)。
+END:VEVENT
+BEGIN:VEVENT
+SUMMARY:地域福祉活動推進講演会
+DTSTART:20261219T130000
+DTEND:20261219T150000
+LOCATION:市総合福祉センター(若草町8-2)
+DESCRIPTION:【いきいきチャレンジ対象事業】\\n担当:市社会福祉協議会 地域支援課(089-941-3828)\\n※講演会に参加する場合は事前申込が必要です。
+END:VEVENT
+END:VCALENDAR`;
+const LS = 'cal_events_v1', HK = 'cal_hist_v1';
+// 安全性設定：読み込みサイズ・予定件数・入力文字数を制限
+const MAX_ICS_BYTES = 5 * 1024 * 1024, MAX_EVENTS = 5000, MAX_TITLE = 200, MAX_TEXT = 2000;
+const COLORS = ['#2f7d5b','#2563b0','#c0392b','#d68910','#7d3c98','#17a2b8','#e67e9b','#6b7785'];
+let selColor = COLORS[0], hist = [];
+try{ const h = JSON.parse(localStorage.getItem(HK) || '[]'); hist = Array.isArray(h) ? h.slice(0,10).filter(x => x && typeof x === 'object').map(x => ({title:cleanText(x.title,MAX_TITLE),loc:cleanText(x.loc,MAX_TEXT),desc:cleanText(x.desc,MAX_TEXT),allDay:!!x.allDay,st:/^\d{2}:\d{2}$/.test(x.st||'')?x.st:'',et:/^\d{2}:\d{2}$/.test(x.et||'')?x.et:'',color:/^#[0-9a-fA-F]{6}$/.test(x.color||'')?x.color:COLORS[0]})) : []; }catch(x){ hist = []; }
+function pushHist(d){
+  const h = {title:d.title,loc:d.loc,desc:d.desc,allDay:d.allDay,st:d.allDay?'':tm(d.start),et:d.allDay?'':tm(d.end),color:d.color};
+  hist = [h].concat(hist.filter(x => !(x.title===h.title && x.loc===h.loc && x.st===h.st && x.et===h.et && !!x.allDay===!!h.allDay))).slice(0,10);
+  try{ localStorage.setItem(HK, JSON.stringify(hist)); }catch(x){}
+}
+let events = [], cur = new Date(2026, 11, 1), editing = null, nid = 1;
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2, '0');
+const key = d => d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+const tm = d => pad(d.getHours()) + ':' + pad(d.getMinutes());
+const unesc = s => String(s||'').replace(/\\n/gi,'\n').replace(/\\,/g,',').replace(/\\;/g,';').replace(/\\\\/g,'\\');
+// ICSのCR/LFを必ずエスケープし、プロパティ注入を防止
+const esc = s => String(s||'').replace(/\\/g,'\\\\').replace(/\r\n|\r|\n/g,'\\n').replace(/,/g,'\\,').replace(/;/g,'\\;');
+const cleanText = (v, max) => String(v ?? '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g,'').slice(0,max);
+const validDate = d => d instanceof Date && Number.isFinite(d.getTime());
+
+function parseDT(v){
+  const m = String(v).match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?)?(Z)?$/); if(!m) return null;
+  const y=+m[1], mo=+m[2], day=+m[3], hh=+(m[4]||0), mm=+(m[5]||0), ss=+(m[6]||0);
+  if(mo<1||mo>12||day<1||day>31||hh>23||mm>59||ss>59) return null;
+  const a = [y, mo-1, day, hh, mm, ss];
+  const d = m[7] ? new Date(Date.UTC(...a)) : new Date(...a);
+  if(!validDate(d) || d.getFullYear()!==(m[7]?new Date(Date.UTC(y,mo-1,day)).getUTCFullYear():y) ||
+     (m[7]?d.getUTCMonth():d.getMonth())!==mo-1 || (m[7]?d.getUTCDate():d.getDate())!==day) return null;
+  return {d, allDay: m[4] === undefined};
+}
+function parseICS(text){
+  if(typeof text !== 'string' || text.length > MAX_ICS_BYTES) throw new Error('ICSファイルが大きすぎます');
+  const lines = text.replace(/\r\n?/g,'\n').replace(/\n[ \t]/g,'').split('\n'), out = []; let e = null;
+  for(const ln of lines){
+    if(ln === 'BEGIN:VEVENT'){ e = {id: nid++}; continue; }
+    if(ln === 'END:VEVENT'){ if(e && e.start && validDate(e.start) && (!e.end || validDate(e.end))){ if(!e.end) e.end = e.start; if(out.length < MAX_EVENTS) out.push(e); } e = null; continue; }
+    if(!e) continue;
+    const i = ln.indexOf(':'); if(i < 0) continue;
+    const n = ln.slice(0,i).split(';')[0].toUpperCase(), v = ln.slice(i+1);
+    if(n === 'SUMMARY') e.title = cleanText(unesc(v), MAX_TITLE);
+    else if(n === 'LOCATION') e.loc = cleanText(unesc(v), MAX_TEXT);
+    else if(n === 'X-COLOR' && /^#[0-9a-fA-F]{6}$/.test(v)) e.color = v;
+    else if(n === 'DESCRIPTION') e.desc = cleanText(unesc(v), MAX_TEXT);
+    else if(n === 'DTSTART'){ const p = parseDT(v); if(p){ e.start = p.d; e.allDay = p.allDay; } }
+    else if(n === 'DTEND'){ const p = parseDT(v); if(p) e.end = p.d; }
+  }
+  return out;
+}
+function save(){
+  try{ localStorage.setItem(LS, JSON.stringify(events.map(e => ({title:e.title,loc:e.loc,desc:e.desc,allDay:e.allDay,color:e.color,s:e.start.getTime(),e:e.end.getTime()})))); }catch(x){}
+}
+function restore(){
+  try{
+    const raw = localStorage.getItem(LS); if(!raw) return null;
+    const data = JSON.parse(raw); if(!Array.isArray(data) || data.length > MAX_EVENTS) return null;
+    return data.filter(o => o && typeof o === 'object' && Number.isFinite(o.s) && Number.isFinite(o.e) &&
+      Number.isFinite(new Date(o.s).getTime()) && Number.isFinite(new Date(o.e).getTime()))
+      .map(o => ({id:nid++,title:cleanText(o.title,MAX_TITLE),loc:cleanText(o.loc,MAX_TEXT),desc:cleanText(o.desc,MAX_TEXT),allDay:!!o.allDay,color:/^#[0-9a-fA-F]{6}$/.test(o.color||'')?o.color:COLORS[0],start:new Date(o.s),end:new Date(o.e)}));
+  }catch(x){ return null; }
+}
+function eventDays(e){
+  const s = new Date(e.start.getFullYear(), e.start.getMonth(), e.start.getDate());
+  let en = new Date(e.end.getFullYear(), e.end.getMonth(), e.end.getDate());
+  if(en > s && (e.allDay || e.end.getHours()+e.end.getMinutes()+e.end.getSeconds() === 0)) en.setDate(en.getDate()-1);
+  const days = [];
+  for(let d = new Date(s); d <= en && days.length < 62; d.setDate(d.getDate()+1)) days.push(key(d));
+  return days;
+}
+
+function render(){
+  const y = cur.getFullYear(), m = cur.getMonth();
+  $('title').textContent = y + '年' + (m+1) + '月';
+  const simple = $('mode').value === 'simple', maxLen = +$('len').value;
+  $('lenwrap').style.display = simple ? '' : 'none';
+  const map = {};
+  events.forEach(e => eventDays(e).forEach(k => (map[k] = map[k] || []).push(e)));
+  const first = new Date(y, m, 1), start = new Date(y, m, 1 - first.getDay());
+  const weeks = Math.ceil((first.getDay() + new Date(y, m+1, 0).getDate()) / 7);
+  const g = $('grid'); g.innerHTML = ''; g.className = 'grid' + (simple ? ' simple' : '');
+  g.style.gridTemplateRows = 'auto repeat(' + weeks + ',minmax(0,1fr))';
+  '日月火水木金土'.split('').forEach((c,i) => { const el = document.createElement('div'); el.className = 'dow' + (i===0?' sun':i===6?' sat':''); el.textContent = c; g.appendChild(el); });
+  const tk = key(new Date());
+  for(let i = 0; i < weeks*7; i++){
+    const d = new Date(start); d.setDate(start.getDate()+i);
+    const c = document.createElement('div'), k = key(d);
+    c.className = 'cell' + (d.getMonth()!==m?' out':'') + (k===tk?' today':'');
+    c.onclick = () => openForm(null, k);
+    const n = document.createElement('div'); n.className = 'num' + (d.getDay()===0?' sun':d.getDay()===6?' sat':''); n.textContent = d.getDate(); c.appendChild(n);
+    (map[k]||[]).sort((a,b)=>a.start-b.start).forEach(e => {
+      const b = document.createElement('button'); b.className = 'ev';
+      const full = e.title || '(無題)';
+      if(e.color) b.style.setProperty('--c', e.color);
+      if(simple){
+        const ch = Array.from(full);
+        b.textContent = ch.length > maxLen ? ch.slice(0,maxLen).join('') + '…' : full;
+        b.title = (e.allDay ? '' : tm(e.start) + '〜' + tm(e.end) + ' ') + full;
+      } else {
+        b.innerHTML = (e.allDay ? '' : '<small><span class="st">' + tm(e.start) + '</span><span class="en">〜' + tm(e.end) + '</span></small>');
+        b.appendChild(document.createTextNode(full));
+        if(e.loc){ const s = document.createElement('small'); s.textContent = '📍' + e.loc; b.appendChild(s); }
+      }
+      b.onclick = ev => { ev.stopPropagation(); openForm(e); };
+      c.appendChild(b);
+    });
+    g.appendChild(c);
+  }
+}
+
+function openForm(e, dateStr){
+  editing = e;
+  const sd = e ? key(e.start) : dateStr;
+  let ed = sd, all = false, st = '09:00', et = '10:00';
+  if(e){
+    all = !!e.allDay;
+    const en = new Date(e.end); if(all && en > e.start) en.setDate(en.getDate()-1);
+    ed = key(en); if(!all){ st = tm(e.start); et = tm(e.end); }
+  }
+  const box = $('box');
+  box.innerHTML = '<h2></h2><div id="hwrap"></div><label>題名<input type="text" id="f_title"></label>'
+   + '<label class="chk"><input type="checkbox" id="f_all"> 終日</label>'
+   + '<div class="row"><label>開始日<input type="date" id="f_sd"></label><label>終了日<input type="date" id="f_ed"></label></div>'
+   + '<div class="row" id="trow"><label>開始時刻<input type="time" id="f_st"></label><label>終了時刻<input type="time" id="f_et"></label></div>'
+   + '<label>場所<input type="text" id="f_loc" maxlength="2000"></label><label>詳細<textarea id="f_desc" rows="4" maxlength="2000"></textarea></label>'
+   + '<label>表示色</label><div class="sw" id="sw"></div>'
+   + '<div id="err"></div><div class="acts"><button id="b_del" class="dng">削除</button><button id="b_cancel">閉じる</button><button id="b_save" class="pri">保存</button></div>';
+  box.querySelector('h2').textContent = e ? '予定を編集' : '予定を追加';
+  $('f_title').value = e ? (e.title||'') : ''; $('f_all').checked = all;
+  $('f_sd').value = sd; $('f_ed').value = ed; $('f_st').value = st; $('f_et').value = et;
+  $('f_loc').value = e ? (e.loc||'') : ''; $('f_desc').value = e ? (e.desc||'') : '';
+  $('b_del').hidden = !e;
+  selColor = e && e.color ? e.color : COLORS[0];
+  const sw = $('sw');
+  COLORS.forEach(c => { const b = document.createElement('button'); b.style.setProperty('--c', c); b.title = c; if(c === selColor) b.className = 'on'; b.onclick = () => { selColor = c; [...sw.children].forEach(x => x.className = x === b ? 'on' : ''); }; sw.appendChild(b); });
+  const hw = $('hwrap');
+  if(!e && hist.length){
+    hw.innerHTML = '<label>履歴から入力（直近' + hist.length + '件）</label><div class="hist"></div>';
+    const hl = hw.querySelector('.hist');
+    hist.forEach(h => {
+      const b = document.createElement('button'); b.style.setProperty('--c', h.color || COLORS[0]);
+      b.textContent = h.title + (h.allDay || !h.st ? '' : ' ' + h.st);
+      b.onclick = () => {
+        $('f_title').value = h.title || ''; $('f_loc').value = h.loc || ''; $('f_desc').value = h.desc || '';
+        $('f_all').checked = !!h.allDay; if(h.st) $('f_st').value = h.st; if(h.et) $('f_et').value = h.et; tog();
+        selColor = h.color || COLORS[0]; [...sw.children].forEach(x => x.className = x.title === selColor ? 'on' : '');
+      };
+      hl.appendChild(b);
+    });
+  }
+  const tog = () => { $('trow').hidden = $('f_all').checked; };
+  $('f_all').onchange = tog; tog();
+  $('b_cancel').onclick = closeForm;
+  $('b_del').onclick = () => { events = events.filter(x => x !== editing); save(); closeForm(); render(); };
+  $('b_save').onclick = submitForm;
+  $('modal').hidden = false;
+}
+function closeForm(){ $('modal').hidden = true; editing = null; }
+function submitForm(){
+  const title = cleanText($('f_title').value.trim(),MAX_TITLE), sd = $('f_sd').value, ed = $('f_ed').value || sd, all = $('f_all').checked;
+  if(!title) return $('err').textContent = '題名を入力してください';
+  if(!sd) return $('err').textContent = '開始日を入力してください';
+  let s, en;
+  if(all){ s = new Date(sd + 'T00:00'); en = new Date(ed + 'T00:00'); if(en < s) en = new Date(s); en.setDate(en.getDate()+1); }
+  else { s = new Date(sd + 'T' + ($('f_st').value || '00:00')); en = new Date(ed + 'T' + ($('f_et').value || $('f_st').value || '00:00')); if(en < s) return $('err').textContent = '終了が開始より前になっています'; }
+  const data = {title, loc:cleanText($('f_loc').value,MAX_TEXT), desc:cleanText($('f_desc').value,MAX_TEXT), allDay:all, color:/^#[0-9a-fA-F]{6}$/.test(selColor)?selColor:COLORS[0], start:s, end:en};
+  pushHist(data);
+  if(editing) Object.assign(editing, data); else events.push(Object.assign({id:nid++}, data));
+  save(); closeForm(); cur = new Date(s.getFullYear(), s.getMonth(), 1); render();
+}
+
+function toICS(){
+  const dd = d => d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate());
+  const dt = d => dd(d) + 'T' + pad(d.getHours()) + pad(d.getMinutes()) + '00';
+  const L = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Monthly Calendar//JA','CALSCALE:GREGORIAN'];
+  events.forEach(e => {
+    L.push('BEGIN:VEVENT','SUMMARY:' + esc(e.title));
+    if(e.allDay){ L.push('DTSTART;VALUE=DATE:' + dd(e.start), 'DTEND;VALUE=DATE:' + dd(e.end)); }
+    else L.push('DTSTART:' + dt(e.start), 'DTEND:' + dt(e.end));
+    if(e.color) L.push('X-COLOR:' + e.color);
+    if(e.loc) L.push('LOCATION:' + esc(e.loc));
+    if(e.desc) L.push('DESCRIPTION:' + esc(e.desc));
+    L.push('END:VEVENT');
+  });
+  L.push('END:VCALENDAR'); return L.join('\r\n');
+}
+function showExport(){
+  const box = $('box'); editing = null;
+  box.innerHTML = '<h2>ICS書き出し</h2><label>下の文字列をコピーして .ics ファイルとして保存してください<textarea id="f_ics" rows="10" readonly></textarea></label><div class="acts"><button id="b_cancel">閉じる</button><button id="b_copy" class="pri">コピー</button></div><div id="err"></div>';
+  $('f_ics').value = toICS(); $('b_cancel').onclick = closeForm;
+  $('b_copy').onclick = () => {
+    const t = $('f_ics'); t.focus(); t.select();
+    let ok = false; try{ ok = document.execCommand('copy'); }catch(x){}
+    $('err').style.color = 'var(--mut)'; $('err').textContent = ok ? 'コピーしました' : '選択済みです。長押しでコピーしてください';
+  };
+  $('modal').hidden = false;
+}
+
+function load(texts, names){
+  let added = []; texts.forEach(t => added = added.concat(parseICS(t)));
+  events = $('append').checked ? events.concat(added).slice(0,MAX_EVENTS) : added.slice(0,MAX_EVENTS); save();
+  $('msg').textContent = names + ' を読み込みました：' + added.length + '件（合計 ' + events.length + '件）';
+  if(added.length){ const f = added.slice().sort((a,b)=>a.start-b.start)[0].start; cur = new Date(f.getFullYear(), f.getMonth(), 1); }
+  render();
+}
+$('file').onchange = async e => {
+  const a = [...e.target.files]; e.target.value = ''; if(!a.length) return;
+  if(a.some(f => f.size > MAX_ICS_BYTES)){ $('msg').textContent = '5MBを超えるICSファイルは読み込めません'; return; }
+  try { const t = await Promise.all(a.map(f => f.text())); load(t, a.map(f=>cleanText(f.name,120)).join(', ')); }
+  catch(err){ $('msg').textContent = '読み込みに失敗しました。ICS形式とファイル内容を確認してください'; }
+};
+$('prev').onclick = () => { cur = new Date(cur.getFullYear(), cur.getMonth()-1, 1); render(); };
+$('next').onclick = () => { cur = new Date(cur.getFullYear(), cur.getMonth()+1, 1); render(); };
+$('today').onclick = () => { const n = new Date(); cur = new Date(n.getFullYear(), n.getMonth(), 1); render(); };
+$('mbtn').onclick = () => { $('menu').hidden = !$('menu').hidden; };
+$('mode').onchange = render; $('len').onchange = render;
+$('exp').onclick = showExport;
+$('print').onclick = () => window.print();
+$('clear').onclick = () => { if(!window.confirm('保存されている予定をすべて削除します。よろしいですか？')) return; events = []; save(); $('msg').textContent = '全ての予定を消去しました'; render(); };
+$('modal').onclick = e => { if(e.target === $('modal')) closeForm(); };
+
+events = restore() || parseICS(SAMPLE);
+if(events.length){ const f = events.slice().sort((a,b)=>a.start-b.start)[0].start; cur = new Date(f.getFullYear(), f.getMonth(), 1); }
+render();
+</script>
+</body>
+</html>
